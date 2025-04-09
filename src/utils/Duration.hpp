@@ -1,8 +1,6 @@
 #pragma once
 
-#include <chrono>
+#include <pico/types.h>
 #include <string>
 
-typedef std::chrono::duration<int64_t, std::micro> Duration;
-
-std::string FormatDuration(const Duration &);
+std::string FormatDuration(int64_t duration);
