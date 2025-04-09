@@ -47,7 +47,7 @@ if(NOT IS_IMPORTED)
 
 	add_executable(test_storage tests/storage.cpp)
 
-	target_link_libraries(test_storage rp2040-utils)
+	target_link_libraries(test_storage pico_stdlib)
 
 	pico_add_extra_outputs(test_storage)
 
