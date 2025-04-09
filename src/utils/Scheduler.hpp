@@ -18,11 +18,11 @@ public:
 
 	static void Work();
 
-	static void Schedule(uint8_t priority, int64_t period_us, Task &&task) {
+	void Schedule(uint8_t priority, int64_t period_us, Task &&task) {
 		schedule(priority, period_us, std::forward<Task>(task));
 	}
 
-	static void Schedule(
+	void Schedule(
 	    uint8_t priority, int64_t period_us, std::function<void()> &&task
 	) {
 		schedule(priority, period_us, [t = std::move(task)](absolute_time_t) {
@@ -31,11 +31,11 @@ public:
 		});
 	}
 
-	static void After(uint8_t priority, int64_t period_us, Task &&task) {
+	void After(uint8_t priority, int64_t period_us, Task &&task) {
 		after(priority, period_us, std::forward<Task>(task));
 	}
 
-	static void After(
+	void After(
 	    uint8_t                          priority,
 	    int64_t                          period_us,
 	    typename std::function<void()> &&task
@@ -46,9 +46,12 @@ public:
 		});
 	}
 
+	static Scheduler &Get();
+	static Scheduler &Core1();
+
 	static void WorkLoop();
 
-	static void InitWorkLoopOnOtherCore();
+	static void InitWorkLoopOnCore1();
 
 private:
 	Scheduler(uint core_idx);
@@ -68,15 +71,15 @@ private:
 	    priority_queue<TaskData *, std::vector<TaskData *>, TaskComparator>
 	        TaskQueue;
 
-	static void schedule(uint8_t priority, int64_t period_us, Task &&task);
+	void schedule(uint8_t priority, int64_t period_us, Task &&task);
 
-	static void after(uint8_t priority, absolute_time_t at, Task &&task);
-
-	static Scheduler &getScheduler(bool otherCore = false);
+	void after(uint8_t priority, absolute_time_t at, Task &&task);
 
 	void addTask(TaskData *ptr);
 
 	void work();
+
+	static Scheduler s_schedulers[2];
 
 	uint                         d_coreIdx;
 	TaskQueue                    d_tasks;

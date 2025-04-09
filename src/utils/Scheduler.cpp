@@ -16,19 +16,8 @@
 Scheduler::Scheduler(uint idx)
     : d_coreIdx{idx} {}
 
-Scheduler &Scheduler::getScheduler(bool otherCore) {
-
-	static Scheduler schedulers[2] = {Scheduler(0), Scheduler(1)};
-	if (otherCore == true && get_core_num() == 1) {
-		panic("[scheduler]: other core is only accessible through core 0");
-	}
-
-	uint coreIdx = otherCore ? 1 - get_core_num() : get_core_num();
-	return schedulers[coreIdx];
-}
-
 void Scheduler::Work() {
-	getScheduler().work();
+	Get().work();
 }
 
 void Scheduler::work() {
@@ -87,7 +76,7 @@ bool Scheduler::TaskComparator::operator()(
 }
 
 void Scheduler::schedule(uint8_t priority, int64_t period_us, Task &&task) {
-	getScheduler().addTask(new TaskData{
+	addTask(new TaskData{
 	    .Priority = priority,
 	    .Next     = get_absolute_time(),
 	    .Task     = std::move(task),
@@ -96,7 +85,7 @@ void Scheduler::schedule(uint8_t priority, int64_t period_us, Task &&task) {
 }
 
 void Scheduler::after(uint8_t priority, absolute_time_t timeout, Task &&task) {
-	getScheduler().addTask(new TaskData{
+	addTask(new TaskData{
 	    .Priority = priority,
 	    .Next     = timeout,
 	    .Task     = std::move(task),
@@ -116,7 +105,7 @@ void Scheduler::addTask(TaskData *ptr) {
 void Scheduler::WorkLoop() {
 	// debugf("[scheduler/%d] scheduler loop init\n", get_core_num());
 	multicore_lockout_victim_init();
-	auto &self = getScheduler();
+	auto &self = Get();
 	debugf("[scheduler/%d] scheduler loop rolling\n", self.d_coreIdx);
 
 	while (true) {
@@ -124,16 +113,28 @@ void Scheduler::WorkLoop() {
 	}
 }
 
-void Scheduler::InitWorkLoopOnOtherCore() {
-	if (multicore_lockout_victim_is_initialized(1 - get_core_num()) == true) {
+void Scheduler::InitWorkLoopOnCore1() {
+	if (multicore_lockout_victim_is_initialized(1) == true) {
 		// debugf("[scheduler/%d] Other core already started\n",
 		// get_core_num());
 		return;
 	}
 	multicore_launch_core1(Scheduler::WorkLoop);
-	while (multicore_lockout_victim_is_initialized(1 - get_core_num()) == false
-	) {
+	while (multicore_lockout_victim_is_initialized(1) == false) {
 		tight_loop_contents();
 	}
 	// debugf("[scheduler/%d] Other core started and ready\n", get_core_num());
+}
+
+Scheduler Scheduler::s_schedulers[2] = {Scheduler(0), Scheduler(1)};
+
+Scheduler &Scheduler::Get() {
+	return s_schedulers[get_core_num()];
+}
+
+Scheduler &Scheduler::Core1() {
+	// if (get_core_num() == 1) {
+	// 	panic("you can only schedule from core 0, or from itself");
+	// }
+	return s_schedulers[1];
 }

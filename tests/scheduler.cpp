@@ -13,16 +13,25 @@ int main() {
 	gpio_init(PICO_DEFAULT_LED_PIN);
 	gpio_set_dir(PICO_DEFAULT_LED_PIN, true);
 
-	Scheduler::InitWorkLoopOnOtherCore();
+	Scheduler::InitWorkLoopOnCore1();
 
-	Scheduler::Schedule(100, 1000000, []() {
+	Scheduler::Get().After(100, make_timeout_time_ms(500), []() {
+		Scheduler::Core1().Schedule(10, 2000000, []() {
+			printf("MEGAPONG\n");
+		});
+	});
+	Scheduler::Get().Schedule(10, 2000000, []() {
+		printf("MEGAPING.........");
+	});
+
+	Scheduler::Get().Schedule(100, 1000000, []() {
 		static int i = 0;
 		printf("Ping[%d]...", ++i);
-		Scheduler::After(0, make_timeout_time_ms(500), [j = i]() {
+		Scheduler::Get().After(0, make_timeout_time_ms(500), [j = i]() {
 			printf("pong[%d]\n", j);
 		});
 	});
-	Scheduler::Schedule(100, 500000, []() {
+	Scheduler::Core1().Schedule(100, 500000, []() {
 		static int i = 0;
 		gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
 	});

@@ -109,7 +109,7 @@ bool Logger::FormatsNextPendingLog() {
 	return true;
 }
 
-void Logger::ScheduleLogFormattingOnOtherCore() {
-	Scheduler::InitWorkLoopOnOtherCore();
-	Scheduler::Schedule(255, 0, Logger::FormatsNextPendingLog);
+void Logger::ScheduleLogFormattingOnCore1() {
+	Scheduler::InitWorkLoopOnCore1();
+	Scheduler::Core1().Schedule(255, 0, Logger::FormatsNextPendingLog);
 }
