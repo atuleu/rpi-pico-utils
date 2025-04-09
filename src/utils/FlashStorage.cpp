@@ -1,3 +1,5 @@
+// SPDX-License_identifier:  LGPL-3.0-or-later
+
 #include "FlashStorage.hpp"
 #include <boards/pico.h>
 #include <cstdint>

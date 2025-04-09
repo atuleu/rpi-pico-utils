@@ -1,3 +1,5 @@
+# SPDX-License_identifier:  LGPL-3.0-or-later
+
 find_program(OPENOCD_EXECUTABLE openocd)
 
 function(get_ocd_version)
@@ -68,7 +70,8 @@ function(add_openocd_upload_target)
 
 	add_custom_target(
 		${ARGS_TARGET}-upload
-		COMMAND ${OPENOCD_EXECUTABLE} -s tcl #
+		COMMAND
+			${OPENOCD_EXECUTABLE} -s tcl #
 			-f interface/cmsis-dap.cfg #
 			-c "adapter speed 5000" #
 			-f target/rp2040.cfg #

@@ -1,3 +1,5 @@
+// SPDX-License_identifier:  LGPL-3.0-or-later
+
 #include "Duration.hpp"
 
 #include <iomanip>

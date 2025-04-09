@@ -1,3 +1,5 @@
+// SPDX-License_identifier:  LGPL-3.0-or-later
+
 #include "Scheduler.hpp"
 #include <pico/time.h>
 #include <pico/types.h>
