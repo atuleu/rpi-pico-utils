@@ -45,6 +45,8 @@ public:
 
 	static bool FormatsNextPendingLog();
 
+	static void ScheduleLogFormattingOnOtherCore();
+
 private:
 	Logger();
 
@@ -53,7 +55,6 @@ private:
 	std::array<char, BufferSize + 1> d_buffer;
 	size_t                           d_start = 0;
 	Queue<Message, 64, true>         d_queue;
-	lock_core_t                      d_lock;
 	Level                            d_level = Level::INFO;
 };
 

@@ -19,20 +19,10 @@ extern "C" {
 }
 
 #include <utils/Defer.hpp>
+#include <utils/internal/debugf.hpp>
 
 #ifndef PICO_NV_STORAGE_NB_SECTOR
 #define PICO_NV_STORAGE_NB_SECTOR 1
-#endif
-
-#ifdef NDEBUG
-#define debugf(...)                                                            \
-	do {                                                                       \
-	} while (0)
-#else
-#define debugf(...)                                                            \
-	do {                                                                       \
-		printf(__VA_ARGS__);                                                   \
-	} while (0)
 #endif
 
 namespace details {

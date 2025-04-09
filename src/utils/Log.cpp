@@ -10,7 +10,10 @@
 #include <cstdio>
 #include <cstring>
 #include <optional>
+#include <pico/types.h>
 #include <stdio.h>
+
+#include <utils/Scheduler.hpp>
 
 void Logger::Logf(Level level, const char *fmt, va_list args) {
 	if (level > d_level) {
@@ -47,7 +50,6 @@ void Logger::Logf(Level level, const char *fmt, va_list args) {
 }
 
 Logger::Logger() {
-	lock_init(&d_lock, next_striped_spin_lock_num());
 	d_buffer[BufferSize] = 0;
 }
 
@@ -105,4 +107,9 @@ bool Logger::FormatsNextPendingLog() {
 		i += willWrite;
 	}
 	return true;
+}
+
+void Logger::ScheduleLogFormattingOnOtherCore() {
+	Scheduler::InitWorkLoopOnSecondCore();
+	Scheduler::Schedule(255, 0, Logger::FormatsNextPendingLog, true);
 }
