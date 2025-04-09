@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <cstdio>
+
 #ifdef NDEBUG
 #define debugf(...)                                                            \
 	do {                                                                       \

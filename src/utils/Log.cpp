@@ -110,6 +110,6 @@ bool Logger::FormatsNextPendingLog() {
 }
 
 void Logger::ScheduleLogFormattingOnOtherCore() {
-	Scheduler::InitWorkLoopOnSecondCore();
-	Scheduler::Schedule(255, 0, Logger::FormatsNextPendingLog, true);
+	Scheduler::InitWorkLoopOnOtherCore();
+	Scheduler::Schedule(255, 0, Logger::FormatsNextPendingLog);
 }

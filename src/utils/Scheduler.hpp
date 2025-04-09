@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include "utils/Queue.hpp"
 #include <optional>
 #include <pico/time.h>
 
@@ -17,57 +18,41 @@ public:
 
 	static void Work();
 
-	static void Schedule(
-	    uint8_t priority, int64_t period_us, Task &&task, bool otherCore = false
-	) {
-		schedule(priority, period_us, std::forward<Task>(task), otherCore);
+	static void Schedule(uint8_t priority, int64_t period_us, Task &&task) {
+		schedule(priority, period_us, std::forward<Task>(task));
 	}
 
 	static void Schedule(
-	    uint8_t                 priority,
-	    int64_t                 period_us,
-	    std::function<void()> &&task,
-	    bool                    otherCore = false
+	    uint8_t priority, int64_t period_us, std::function<void()> &&task
 	) {
-		schedule(
-		    priority,
-		    period_us,
-		    [t = std::move(task)](absolute_time_t) {
-			    t();
-			    return std::nullopt;
-		    },
-		    otherCore
-		);
+		schedule(priority, period_us, [t = std::move(task)](absolute_time_t) {
+			t();
+			return std::nullopt;
+		});
 	}
 
-	static void After(
-	    uint8_t priority, int64_t period_us, Task &&task, bool otherCore = false
-	) {
-		after(priority, period_us, std::forward<Task>(task), otherCore);
+	static void After(uint8_t priority, int64_t period_us, Task &&task) {
+		after(priority, period_us, std::forward<Task>(task));
 	}
 
 	static void After(
 	    uint8_t                          priority,
 	    int64_t                          period_us,
-	    typename std::function<void()> &&task,
-	    bool                             otherCore = false
+	    typename std::function<void()> &&task
 	) {
-		after(
-		    priority,
-		    period_us,
-		    [t = std::move(task)](absolute_time_t) {
-			    t();
-			    return std::nullopt;
-		    },
-		    otherCore
-		);
+		after(priority, period_us, [t = std::move(task)](absolute_time_t) {
+			t();
+			return std::nullopt;
+		});
 	}
 
 	static void WorkLoop();
 
-	static void InitWorkLoopOnSecondCore();
+	static void InitWorkLoopOnOtherCore();
 
 private:
+	Scheduler(uint core_idx);
+
 	struct TaskData {
 		uint8_t         Priority;
 		absolute_time_t Next;
@@ -76,17 +61,24 @@ private:
 	};
 
 	struct TaskComparator {
-		bool operator()(const TaskData &a, const TaskData &b);
+		bool operator()(const TaskData *a, const TaskData *b);
 	};
 
-	typedef std::priority_queue<TaskData, std::vector<TaskData>, TaskComparator>
-	    TaskQueue;
+	typedef std::
+	    priority_queue<TaskData *, std::vector<TaskData *>, TaskComparator>
+	        TaskQueue;
 
-	static void
-	schedule(uint8_t priority, int64_t period_us, Task &&task, bool otherCore);
+	static void schedule(uint8_t priority, int64_t period_us, Task &&task);
 
-	static void
-	after(uint8_t priority, absolute_time_t at, Task &&task, bool otherCore);
+	static void after(uint8_t priority, absolute_time_t at, Task &&task);
 
-	static TaskQueue d_tasks[2];
+	static Scheduler &getScheduler(bool otherCore = false);
+
+	void addTask(TaskData *ptr);
+
+	void work();
+
+	uint                         d_coreIdx;
+	TaskQueue                    d_tasks;
+	Queue<TaskData *, 16, false> d_incoming;
 };
