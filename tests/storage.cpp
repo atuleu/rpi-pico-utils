@@ -24,7 +24,6 @@ int main() {
 	gpio_init(PICO_DEFAULT_LED_PIN);
 	gpio_set_dir(PICO_DEFAULT_LED_PIN, true);
 
-	Logger::InitLogsOnSecondCore();
 	Logger::Get().SetLevel(Logger::Level::DEBUG);
 
 	NVu8::Load(a);

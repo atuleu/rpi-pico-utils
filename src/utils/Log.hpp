@@ -41,9 +41,7 @@ public:
 		d_level = lvl;
 	}
 
-	static void FormatsPendingLogsLoop();
-
-	static void InitLogsOnSecondCore();
+	static bool FormatsNextPendingLog();
 
 private:
 	Logger();
