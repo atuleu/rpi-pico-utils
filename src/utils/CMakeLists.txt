@@ -12,6 +12,8 @@ set(SRC_FILES
 	FlashStorage.cpp
 	Duration.cpp
 	Duration.hpp
+	LED.hpp
+	LED.cpp
 )
 
 add_library(rp2040-utils INTERFACE)
@@ -19,5 +21,6 @@ target_sources(rp2040-utils INTERFACE ${SRC_FILES})
 
 target_link_libraries(
 	rp2040-utils INTERFACE pico_stdlib pico_multicore hardware_flash
+						   hardware_pwm
 )
 target_include_directories(rp2040-utils INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../)
