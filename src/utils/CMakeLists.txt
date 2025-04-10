@@ -14,13 +14,14 @@ set(SRC_FILES
 	Duration.hpp
 	LED.hpp
 	LED.cpp
+	Button.hpp
+	Button.cpp
 )
 
-add_library(rp2040-utils INTERFACE)
-target_sources(rp2040-utils INTERFACE ${SRC_FILES})
+add_library(pico-utils INTERFACE)
+target_sources(pico-utils INTERFACE ${SRC_FILES})
 
 target_link_libraries(
-	rp2040-utils INTERFACE pico_stdlib pico_multicore hardware_flash
-						   hardware_pwm
+	pico-utils INTERFACE pico_stdlib pico_multicore hardware_flash hardware_pwm
 )
-target_include_directories(rp2040-utils INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../)
+target_include_directories(pico-utils INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../)

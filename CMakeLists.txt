@@ -7,7 +7,7 @@ if(NOT COMMAND pico_sdk_init)
 endif(NOT COMMAND pico_sdk_init)
 
 project(
-	rp2040-utils
+	pico-utils
 	VERSION 0.1.0
 	LANGUAGES C CXX
 )
@@ -43,10 +43,10 @@ add_subdirectory(src/utils)
 if(NOT IS_IMPORTED)
 	add_executable(test_compilation tests/main.cpp)
 
-	target_link_libraries(test_compilation rp2040-utils)
+	target_link_libraries(test_compilation pico-utils)
 
 	add_executable(test_scheduler tests/scheduler.cpp)
-	target_link_libraries(test_scheduler rp2040-utils)
+	target_link_libraries(test_scheduler pico-utils)
 	pico_add_extra_outputs(test_scheduler)
 	add_openocd_upload_target(TARGET test_scheduler)
 
