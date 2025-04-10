@@ -28,14 +28,14 @@ LED::LED(uint pin, Scheduler &scheduler)
 	constexpr static uint64_t PERIOD = 250000;
 #endif
 
-	scheduler.Schedule(10, PERIOD, [this](absolute_time_t now) {
+	scheduler.Schedule(PERIOD, [this](absolute_time_t now) {
 		work(now);
 		return std::nullopt;
 	});
 }
 
 void LED::Set(uint8_t level, uint pulsePeriod_us) {
-	d_scheduler.After(100, 0, [this, level, pulsePeriod_us]() {
+	d_scheduler.After(0, [this, level, pulsePeriod_us]() {
 		d_level          = level;
 		d_pulsePeriod_us = pulsePeriod_us;
 		d_blinkCount     = 0;
@@ -51,7 +51,7 @@ void LED::Blink(uint count, uint8_t level) {
 		return;
 	}
 
-	d_scheduler.After(100, 0, [this, count, level]() {
+	d_scheduler.After(0, [this, count, level]() {
 		d_blinkCount     = count;
 		d_level          = level;
 		d_pulsePeriod_us = 0;

@@ -8,9 +8,18 @@
 
 #include <functional>
 #include <memory>
+#include <pico/types.h>
 #include <queue>
-#include <type_traits>
-#include <variant>
+
+static constexpr uint8_t         SCHEDULER_DEFAULT_PRIORITY = 100;
+static constexpr uint8_t         SCHEDULER_HIGH_PRIORITY    = 50;
+static constexpr uint8_t         SCHEDULER_LOW_PRIORITY     = 200;
+static constexpr absolute_time_t SCHEDULER_START_NOW = 0xffffffffffffffff;
+
+struct SchedulerOptions {
+	uint8_t         Priority = SCHEDULER_DEFAULT_PRIORITY;
+	absolute_time_t Start    = SCHEDULER_START_NOW;
+};
 
 class Scheduler {
 public:
@@ -18,32 +27,46 @@ public:
 
 	static void Work();
 
-	void Schedule(uint8_t priority, int64_t period_us, Task &&task) {
-		schedule(priority, period_us, std::forward<Task>(task));
+	void Schedule(
+	    int64_t period_us, Task &&task, const SchedulerOptions &options = {}
+	) {
+		schedule(period_us, std::forward<Task>(task), options);
 	}
 
 	void Schedule(
-	    uint8_t priority, int64_t period_us, std::function<void()> &&task
+	    int64_t                 period_us,
+	    std::function<void()> &&task,
+	    const SchedulerOptions &options = {}
 	) {
-		schedule(priority, period_us, [t = std::move(task)](absolute_time_t) {
-			t();
-			return std::nullopt;
-		});
-	}
-
-	void After(uint8_t priority, int64_t period_us, Task &&task) {
-		after(priority, period_us, std::forward<Task>(task));
+		schedule(
+		    period_us,
+		    [t = std::move(task)](absolute_time_t) {
+			    t();
+			    return std::nullopt;
+		    },
+		    options
+		);
 	}
 
 	void After(
-	    uint8_t                          priority,
-	    int64_t                          period_us,
-	    typename std::function<void()> &&task
+	    absolute_time_t at, Task &&task, const SchedulerOptions &options = {}
 	) {
-		after(priority, period_us, [t = std::move(task)](absolute_time_t) {
-			t();
-			return std::nullopt;
-		});
+		after(at, std::forward<Task>(task), options);
+	}
+
+	void After(
+	    absolute_time_t                  at,
+	    typename std::function<void()> &&task,
+	    const SchedulerOptions          &options = {}
+	) {
+		after(
+		    at,
+		    [t = std::move(task)](absolute_time_t) {
+			    t();
+			    return std::nullopt;
+		    },
+		    options
+		);
 	}
 
 	static Scheduler &Get();
@@ -68,12 +91,14 @@ private:
 	};
 
 	typedef std::
-	    priority_queue<TaskData *, std::vector<TaskData *>, TaskComparator>
+	    priority_queue<TaskData *, std::deque<TaskData *>, TaskComparator>
 	        TaskQueue;
 
-	void schedule(uint8_t priority, int64_t period_us, Task &&task);
+	void
+	schedule(int64_t period_us, Task &&task, const SchedulerOptions &options);
 
-	void after(uint8_t priority, absolute_time_t at, Task &&task);
+	void
+	after(absolute_time_t at, Task &&task, const SchedulerOptions &options);
 
 	void addTask(TaskData *ptr);
 

@@ -111,5 +111,9 @@ bool Logger::FormatsNextPendingLog() {
 
 void Logger::ScheduleLogFormattingOnCore1() {
 	Scheduler::InitWorkLoopOnCore1();
-	Scheduler::Core1().Schedule(255, 0, Logger::FormatsNextPendingLog);
+	Scheduler::Core1().Schedule(
+	    0,
+	    Logger::FormatsNextPendingLog,
+	    {.Priority = SCHEDULER_LOW_PRIORITY}
+	);
 }

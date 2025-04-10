@@ -75,18 +75,23 @@ bool Scheduler::TaskComparator::operator()(
 	return a->Next > b->Next;
 }
 
-void Scheduler::schedule(uint8_t priority, int64_t period_us, Task &&task) {
+void Scheduler::schedule(
+    int64_t period_us, Task &&task, const SchedulerOptions &options
+) {
 	addTask(new TaskData{
-	    .Priority = priority,
-	    .Next     = get_absolute_time(),
+	    .Priority = options.Priority,
+	    .Next     = options.Start == SCHEDULER_START_NOW ? get_absolute_time()
+	                                                     : options.Start,
 	    .Task     = std::move(task),
 	    .Period   = period_us,
 	});
 }
 
-void Scheduler::after(uint8_t priority, absolute_time_t timeout, Task &&task) {
+void Scheduler::after(
+    absolute_time_t timeout, Task &&task, const SchedulerOptions &options
+) {
 	addTask(new TaskData{
-	    .Priority = priority,
+	    .Priority = options.Priority,
 	    .Next     = timeout,
 	    .Task     = std::move(task),
 	    .Period   = -1,
