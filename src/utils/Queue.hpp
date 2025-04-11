@@ -3,6 +3,8 @@
 #pragma once
 
 // this should be documented
+#include <atomic>
+#include <utility>
 extern "C" {
 #include "pico/lock_core.h"
 }
@@ -13,10 +15,10 @@ extern "C" {
 
 #include "RingBuffer.hpp"
 
-template <typename T, size_t N, bool Threadsafe = true>
-class Queue : protected RingBuffer<T, N> {
+template <typename T, size_t N>
+class BlockingQueue : protected RingBuffer<T, N> {
 public:
-	Queue() {
+	BlockingQueue() {
 		lock_init(&d_core, next_striped_spin_lock_num());
 	}
 
@@ -44,7 +46,7 @@ public:
 	}
 
 	template <typename... Args> inline bool TryEmplace(Args &&...args) {
-		return Queue::emplace(false, std::forward<Args>(args)...);
+		return BlockingQueue::emplace(false, std::forward<Args>(args)...);
 	}
 
 	template <typename U> inline void AddBlocking(U &&obj) {
@@ -56,7 +58,7 @@ public:
 	}
 
 	template <typename... Args> inline void EmplaceBlocking(Args &&...args) {
-		Queue::emplace(true, std::forward<Args>(args)...);
+		BlockingQueue::emplace(true, std::forward<Args>(args)...);
 	}
 
 protected:
@@ -137,42 +139,114 @@ protected:
 	}
 };
 
-template <typename T, size_t N>
-class Queue<T, N, false> : protected RingBuffer<T, N> {
+template <typename T, size_t N> class ConcurentQueue {
 public:
 	inline size_t Size() const {
-		return this->d_count;
+		auto tail = d_consumerHead.load(std::memory_order_relaxed);
+		auto head = d_producerTail.load(std::memory_order_relaxed);
+
+		if (tail > head) {
+			return head - tail + N;
+		}
+		return head - tail;
 	}
 
 	inline bool Empty() const {
-		return this->d_count == 0;
+		return d_consumerHead.load(std::memory_order_relaxed) ==
+		       d_producerTail.load(std::memory_order_relaxed);
 	}
 
 	inline bool Full() const {
-		return this->d_count == N;
+		return Size() == Capacity;
 	}
 
 	template <typename U> inline bool TryAdd(U &&obj) {
-		if (this->d_count >= N) {
-			return false;
+
+		auto oldProducerHead = d_producerHead.load(std::memory_order_relaxed);
+		do {
+
+			auto consumerTail = d_consumerTail.load(std::memory_order_acquire);
+
+			if (oldProducerHead + 1 == consumerTail ||
+			    (oldProducerHead == Capacity && consumerTail == 0)) {
+				// we are full.
+				return false;
+			}
+
+		} while (d_producerHead.compare_exchange_weak(
+		             oldProducerHead,
+		             oldProducerHead + 1,
+		             std::memory_order_relaxed,
+		             std::memory_order_relaxed
+		         ) == false);
+
+		d_objects[oldProducerHead] = std::forward<U>(obj);
+		while (d_producerTail.load(std::memory_order_relaxed) != oldProducerHead
+		) {
+			tight_loop_contents();
 		}
-		this->insert(std::forward<U>(obj));
+		d_producerTail.store(oldProducerHead + 1, std::memory_order_release);
+		return true;
+	}
+
+	template <typename... Args> inline bool TryEmplace(Args &&...args) {
+		auto oldProducerHead = d_producerHead.load(std::memory_order_relaxed);
+		do {
+
+			auto consumerTail = d_consumerTail.load(std::memory_order_acquire);
+
+			if (oldProducerHead + 1 == consumerTail ||
+			    (oldProducerHead == Capacity && consumerTail == 0)) {
+				// we are full.
+				return false;
+			}
+
+		} while (d_producerHead.compare_exchange_weak(
+		             oldProducerHead,
+		             oldProducerHead + 1,
+		             std::memory_order_relaxed,
+		             std::memory_order_relaxed
+		         ) == false);
+
+		d_objects[oldProducerHead] = T(std::forward<Args>(args)...);
+		while (d_producerTail.load(std::memory_order_relaxed) != oldProducerHead
+		) {
+			tight_loop_contents();
+		}
+		d_producerTail.store(oldProducerHead + 1, std::memory_order_release);
 		return true;
 	}
 
 	inline bool TryRemove(T &obj) {
-		if (this->d_count == 0) {
-			return false;
+		auto oldConsumerHead = d_consumerHead.load(std::memory_order_relaxed);
+		do {
+
+			auto producerTail = d_producerTail.load(std::memory_order_acquire);
+			if (producerTail == oldConsumerHead) {
+				return false;
+			}
+
+		} while (d_consumerHead.compare_exchange_weak(
+		             oldConsumerHead,
+		             oldConsumerHead + 1,
+		             std::memory_order_relaxed,
+		             std::memory_order_relaxed
+		         ) == false);
+
+		obj = d_objects[oldConsumerHead];
+
+		while (d_consumerTail.load(std::memory_order_relaxed) != oldConsumerHead
+		) {
+			tight_loop_contents();
 		}
-		this->pop(obj);
+
+		d_consumerTail.store(oldConsumerHead + 1, std::memory_order_release);
 		return true;
 	}
 
-	template <typename... Args> bool TryEmplace(Args &&...args) {
-		if (this->d_count >= N) {
-			return false;
-		}
-		this->emplace(std::forward<Args>(args)...);
-		return true;
-	}
+private:
+	constexpr static size_t      Capacity = N - 1;
+	std::array<T, N>             d_objects;
+	volatile std::atomic<size_t> d_producerHead, d_producerTail, d_consumerHead,
+	    d_consumerTail;
 };

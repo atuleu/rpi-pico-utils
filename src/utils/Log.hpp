@@ -54,7 +54,7 @@ private:
 
 	std::array<char, BufferSize + 1> d_buffer;
 	size_t                           d_start = 0;
-	Queue<Message, 64, true>         d_queue;
+	BlockingQueue<Message, 64>       d_queue;
 	Level                            d_level = Level::INFO;
 };
 

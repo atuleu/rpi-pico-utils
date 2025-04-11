@@ -7,7 +7,7 @@
 #include <utils/FlashStorage.hpp>
 
 int main() {
-	Queue<int, 8, true> foo;
+	BlockingQueue<int, 8> foo;
 	foo.EmplaceBlocking(0);
 	int res;
 	foo.RemoveBlocking(res);

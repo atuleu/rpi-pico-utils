@@ -108,5 +108,5 @@ private:
 
 	uint                         d_coreIdx;
 	TaskQueue                    d_tasks;
-	Queue<TaskData *, 16, false> d_incoming;
+	ConcurentQueue<TaskData *, 16> d_incoming;
 };
