@@ -14,6 +14,8 @@ set(SRC_FILES
 	Duration.hpp
 	LED.hpp
 	LED.cpp
+	Button.hpp
+	Button.cpp
 )
 
 add_library(rp2040-utils INTERFACE)

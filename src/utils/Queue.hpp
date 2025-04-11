@@ -139,7 +139,7 @@ protected:
 	}
 };
 
-template <typename T, size_t N> class ConcurentQueue {
+template <typename T, uint16_t N> class ConcurentQueue {
 public:
 	inline size_t Size() const {
 		auto tail = d_consumerHead.load(std::memory_order_relaxed);
@@ -247,6 +247,6 @@ public:
 private:
 	constexpr static size_t      Capacity = N - 1;
 	std::array<T, N>             d_objects;
-	volatile std::atomic<size_t> d_producerHead, d_producerTail, d_consumerHead,
-	    d_consumerTail;
+	volatile std::atomic<uint16_t> d_producerHead, d_producerTail,
+	    d_consumerHead, d_consumerTail;
 };
