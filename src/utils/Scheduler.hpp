@@ -4,11 +4,10 @@
 
 #include "utils/Queue.hpp"
 #include "utils/RingBuffer.hpp"
-#include <optional>
-#include <pico/time.h>
-
 #include <functional>
 #include <memory>
+#include <optional>
+#include <pico/time.h>
 #include <pico/types.h>
 #include <queue>
 
@@ -87,13 +86,15 @@ private:
 		int64_t         Period;
 	};
 
-	struct TaskComparator {
-		bool operator()(const TaskData *a, const TaskData *b);
-	};
+	class TaskQueue {
+	public:
+#ifndef NDEBUG
+		void debugPrintTaskQueue();
+#endif
 
-	typedef std::
-	    priority_queue<TaskData *, std::deque<TaskData *>, TaskComparator>
-	        TaskQueue;
+	private:
+		std::
+	}
 
 	void
 	schedule(int64_t period_us, Task &&task, const SchedulerOptions &options);

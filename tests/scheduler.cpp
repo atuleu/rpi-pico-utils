@@ -15,30 +15,49 @@ int main() {
 
 	Scheduler::InitWorkLoopOnCore1();
 
-	Scheduler::Get().After(make_timeout_time_ms(500), []() {
-		Scheduler::Core1().Schedule(
-		    2000000,
-		    []() { printf("MEGAPONG\n"); },
-		    {.Priority = SCHEDULER_HIGH_PRIORITY}
-		);
-	});
+	printf(
+	    "----------------------------------------------------------------------"
+	    "----------\nScheduler "
+	    "Test\n----------------------------------------------------------------"
+	    "----------------\n"
+	);
+
+	Scheduler::Core1().After(
+	    make_timeout_time_ms(500),
+	    []() {
+		    Scheduler::Get().Schedule(
+		        2000000,
+		        []() { printf("MEGAPONG\n"); },
+		        {.Priority = SCHEDULER_HIGH_PRIORITY, .Start = 0}
+		    );
+	    },
+	    {.Start = 0}
+	);
 	Scheduler::Get().Schedule(
 	    2000000,
 	    []() { printf("MEGAPING........."); },
-	    {.Priority = SCHEDULER_HIGH_PRIORITY}
+	    {.Priority = SCHEDULER_HIGH_PRIORITY, .Start = 0}
 	);
 
-	Scheduler::Get().Schedule(1000000, []() {
-		static int i = 0;
-		printf("Ping[%d]...", ++i);
-		Scheduler::Get().After(500 * 1000, [j = i]() {
-			printf("pong[%d]\n", j);
-		});
-	});
-	Scheduler::Core1().Schedule(500000, []() {
-		static int i = 0;
-		gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
-	});
+	Scheduler::Get().Schedule(
+	    1000000,
+	    []() {
+		    static int i = 0;
+		    printf("Ping[%d]...", ++i);
+		    Scheduler::Get().After(500 * 1000, [j = i]() {
+			    printf("pong[%d]\n", j);
+		    });
+	    },
+	    {.Start = 0}
+	);
+	Scheduler::Core1().Schedule(
+	    500000,
+	    []() {
+		    static int i = 0;
+		    gpio_put(PICO_DEFAULT_LED_PIN, !gpio_get(PICO_DEFAULT_LED_PIN));
+	    },
+	    {.Start = 0}
+	);
 
 	Scheduler::WorkLoop();
 }

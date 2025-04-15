@@ -10,6 +10,7 @@
 #include <pico/time.h>
 #include <pico/types.h>
 
+#include <queue>
 #include <utils/Defer.hpp>
 #include <utils/internal/debugf.hpp>
 
@@ -19,6 +20,21 @@ Scheduler::Scheduler(uint idx)
 void Scheduler::Work() {
 	Get().work();
 }
+
+#ifndef NDEBUG
+void Scheduler::debugPrintTaskQueue() {
+	printf(
+	    "\n--------------------------------------------------------------------"
+	    "------------\n"
+	);
+	for (const auto &task : d_tasks) {
+	}
+	printf(
+	    "\n--------------------------------------------------------------------"
+	    "------------\n"
+	);
+}
+#endif
 
 void Scheduler::work() {
 
@@ -30,6 +46,7 @@ void Scheduler::work() {
 
 	std::vector<TaskData *> renewed;
 	renewed.reserve(d_tasks.size());
+
 	while (true) {
 		auto now = get_absolute_time();
 		if (absolute_time_diff_us(now, d_tasks.top()->Next) > 0) {
@@ -44,17 +61,24 @@ void Scheduler::work() {
 		}
 
 		if (task->Period < 0) {
+			debugf("[scheduler/%d] task 0x%x done\n", d_coreIdx, int(task));
 			delete task;
+
 			// one shot task, simply do not put it back
 			continue;
 		}
 
 		task->Next += task->Period;
-		if (task->Period > 0) {
-			while (absolute_time_diff_us(now, task->Next) < 0) {
-				debugf("[scheduler/%d] task overflow", d_coreIdx);
-				task->Next += task->Period;
-			}
+		auto nextIn = absolute_time_diff_us(now, task->Next);
+		if (task->Period > 0 && nextIn < 0) {
+			uint nbOverflow = std::abs(nextIn) / task->Period + 1;
+			debugf(
+			    "[scheduler/%d] task %x has overflow %d time(s)\n",
+			    d_coreIdx,
+			    int(task),
+			    nbOverflow
+			);
+			task->Next += nbOverflow * task->Period;
 		}
 
 		renewed.push_back(task);
@@ -63,13 +87,17 @@ void Scheduler::work() {
 	for (const auto &t : renewed) {
 		d_tasks.push(t);
 	}
+
+#ifndef NDEBUG
+	this->debugPrintTaskQueue();
+#endif
 }
 
 bool Scheduler::TaskComparator::operator()(
     const TaskData *a, const TaskData *b
 ) {
 	if (a->Next == b->Next) {
-		return a->Priority < b->Priority;
+		return a->Priority > b->Priority;
 	}
 
 	return a->Next > b->Next;
@@ -105,12 +133,15 @@ void Scheduler::addTask(TaskData *ptr) {
 	}
 	d_incoming.insert(ptr);
 
-	debugf("[scheduler/%d] scheduled a new task\n", d_coreIdx);
+	debugf("[scheduler/%d] scheduled a new task 0x%x\n", d_coreIdx, int(ptr));
 }
 
 void Scheduler::WorkLoop() {
 	// debugf("[scheduler/%d] scheduler loop init\n", get_core_num());
-	multicore_lockout_victim_init();
+
+	if (get_core_num() == 1) {
+		multicore_lockout_victim_init();
+	}
 	auto &self = Get();
 	debugf("[scheduler/%d] scheduler loop rolling\n", self.d_coreIdx);
 
@@ -140,7 +171,7 @@ Scheduler &Scheduler::Get() {
 
 Scheduler &Scheduler::Core1() {
 	// if (get_core_num() == 1) {
-	// 	panic("you can only schedule from core 0, or from itself");
+	//	panic("you can only schedule from core 0, or from itself");
 	// }
 	return s_schedulers[1];
 }
