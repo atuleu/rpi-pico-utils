@@ -6,19 +6,15 @@
 int main() {
 	stdio_init_all();
 
-	Logger::ScheduleLogFormattingOnCore1();
+	Scheduler::InitWorkLoopOnCore1(Logger::ScheduleLogFormatting);
 
 	Scheduler::Get().Schedule(1000 * 1000, []() {
 		static int i = 0;
-		// Infof("coucou %d", ++i);
+		Infof("Info %d", ++i);
 	});
 
-	Scheduler::Get().Schedule(1000, []() {
-		printf("piou");
-
-		// Logger::FormatsNextPendingLog();
-	});
-	Infof("hehe");
+	Scheduler::Get().Schedule(2000000, []() { Warnf("A warning"); });
+	Infof("starting logging");
 
 	Scheduler::Get().WorkLoop();
 }

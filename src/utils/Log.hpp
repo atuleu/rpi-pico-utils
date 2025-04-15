@@ -45,7 +45,7 @@ public:
 
 	static bool FormatsNextPendingLog();
 
-	static void ScheduleLogFormattingOnCore1();
+	static void ScheduleLogFormatting();
 
 private:
 	Logger();

@@ -109,4 +109,10 @@ bool Logger::FormatsNextPendingLog() {
 	return true;
 }
 
-void Logger::ScheduleLogFormattingOnCore1() {}
+void Logger::ScheduleLogFormatting() {
+	Scheduler::Get().Schedule(
+	    1000,
+	    FormatsNextPendingLog,
+	    {.Priority = SCHEDULER_LOW_PRIORITY, .Name = "log/output"}
+	);
+}
