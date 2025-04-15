@@ -41,23 +41,5 @@ endif(IS_IMPORTED)
 add_subdirectory(src/utils)
 
 if(NOT IS_IMPORTED)
-	add_executable(test_compilation tests/main.cpp)
-
-	target_link_libraries(test_compilation rp2040-utils)
-
-	add_executable(test_scheduler tests/scheduler.cpp)
-	target_link_libraries(test_scheduler rp2040-utils)
-	pico_add_extra_outputs(test_scheduler)
-	add_openocd_upload_target(TARGET test_scheduler)
-
-	add_executable(test_storage tests/storage.cpp)
-	target_link_libraries(test_storage pico_stdlib)
-	pico_add_extra_outputs(test_storage)
-	add_openocd_upload_target(TARGET test_storage)
-
-	add_executable(test_logs tests/log.cpp)
-	target_link_libraries(test_logs rp2040-utils)
-	pico_add_extra_outputs(test_logs)
-	add_openocd_upload_target(TARGET test_logs)
-
+	add_subdirectory(tests)
 endif(NOT IS_IMPORTED)
