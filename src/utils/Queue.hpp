@@ -2,10 +2,13 @@
 
 #pragma once
 
-// this should be documented
+#include "utils/internal/debugf.hpp"
 #include <atomic>
+#include <exception>
 #include <utility>
+
 extern "C" {
+// this should be documented
 #include "pico/lock_core.h"
 }
 
@@ -137,116 +140,4 @@ protected:
 			value = 0;
 		}
 	}
-};
-
-template <typename T, uint16_t N> class ConcurentQueue {
-public:
-	inline size_t Size() const {
-		auto tail = d_consumerHead.load(std::memory_order_relaxed);
-		auto head = d_producerTail.load(std::memory_order_relaxed);
-
-		if (tail > head) {
-			return head - tail + N;
-		}
-		return head - tail;
-	}
-
-	inline bool Empty() const {
-		return d_consumerHead.load(std::memory_order_relaxed) ==
-		       d_producerTail.load(std::memory_order_relaxed);
-	}
-
-	inline bool Full() const {
-		return Size() == Capacity;
-	}
-
-	template <typename U> inline bool TryAdd(U &&obj) {
-
-		auto oldProducerHead = d_producerHead.load(std::memory_order_relaxed);
-		do {
-
-			auto consumerTail = d_consumerTail.load(std::memory_order_acquire);
-
-			if (oldProducerHead + 1 == consumerTail ||
-			    (oldProducerHead == Capacity && consumerTail == 0)) {
-				// we are full.
-				return false;
-			}
-
-		} while (d_producerHead.compare_exchange_weak(
-		             oldProducerHead,
-		             oldProducerHead + 1,
-		             std::memory_order_relaxed,
-		             std::memory_order_relaxed
-		         ) == false);
-
-		d_objects[oldProducerHead] = std::forward<U>(obj);
-		while (d_producerTail.load(std::memory_order_relaxed) != oldProducerHead
-		) {
-			tight_loop_contents();
-		}
-		d_producerTail.store(oldProducerHead + 1, std::memory_order_release);
-		return true;
-	}
-
-	template <typename... Args> inline bool TryEmplace(Args &&...args) {
-		auto oldProducerHead = d_producerHead.load(std::memory_order_relaxed);
-		do {
-
-			auto consumerTail = d_consumerTail.load(std::memory_order_acquire);
-
-			if (oldProducerHead + 1 == consumerTail ||
-			    (oldProducerHead == Capacity && consumerTail == 0)) {
-				// we are full.
-				return false;
-			}
-
-		} while (d_producerHead.compare_exchange_weak(
-		             oldProducerHead,
-		             oldProducerHead + 1,
-		             std::memory_order_relaxed,
-		             std::memory_order_relaxed
-		         ) == false);
-
-		d_objects[oldProducerHead] = T(std::forward<Args>(args)...);
-		while (d_producerTail.load(std::memory_order_relaxed) != oldProducerHead
-		) {
-			tight_loop_contents();
-		}
-		d_producerTail.store(oldProducerHead + 1, std::memory_order_release);
-		return true;
-	}
-
-	inline bool TryRemove(T &obj) {
-		auto oldConsumerHead = d_consumerHead.load(std::memory_order_relaxed);
-		do {
-
-			auto producerTail = d_producerTail.load(std::memory_order_acquire);
-			if (producerTail == oldConsumerHead) {
-				return false;
-			}
-
-		} while (d_consumerHead.compare_exchange_weak(
-		             oldConsumerHead,
-		             oldConsumerHead + 1,
-		             std::memory_order_relaxed,
-		             std::memory_order_relaxed
-		         ) == false);
-
-		obj = d_objects[oldConsumerHead];
-
-		while (d_consumerTail.load(std::memory_order_relaxed) != oldConsumerHead
-		) {
-			tight_loop_contents();
-		}
-
-		d_consumerTail.store(oldConsumerHead + 1, std::memory_order_release);
-		return true;
-	}
-
-private:
-	constexpr static size_t      Capacity = N - 1;
-	std::array<T, N>             d_objects;
-	volatile std::atomic<uint16_t> d_producerHead, d_producerTail,
-	    d_consumerHead, d_consumerTail;
 };

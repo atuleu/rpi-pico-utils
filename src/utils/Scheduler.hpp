@@ -3,6 +3,7 @@
 #pragma once
 
 #include "utils/Queue.hpp"
+#include "utils/RingBuffer.hpp"
 #include <optional>
 #include <pico/time.h>
 
@@ -108,5 +109,6 @@ private:
 
 	uint                         d_coreIdx;
 	TaskQueue                    d_tasks;
-	ConcurentQueue<TaskData *, 16> d_incoming;
+
+	RingBuffer<TaskData *, 16> d_incoming;
 };

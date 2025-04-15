@@ -19,10 +19,11 @@ Button::Button(uint pin, Scheduler &scheduler)
 }
 
 std::optional<Button::Event> Button::Pending() {
-	Event e;
-	if (d_pendingEvents.TryRemove(e) == false) {
+	if (d_pendingEvents.empty()) {
 		return std::nullopt;
 	}
+	Event e;
+	d_pendingEvents.pop(e);
 	return e;
 }
 

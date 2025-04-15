@@ -3,6 +3,7 @@
 #pragma once
 
 #include "utils/Queue.hpp"
+#include "utils/RingBuffer.hpp"
 #include "utils/Scheduler.hpp"
 #include <pico/types.h>
 
@@ -32,9 +33,9 @@ private:
 
 	void pushEvent(Event e);
 
-	uint                     d_pin;
-	ConcurentQueue<Event, 8> d_pendingEvents;
-	State                    d_state      = State::IDLE;
-	uint                     d_clicks     = 0;
-	absolute_time_t          d_transition = 0;
+	uint                                        d_pin;
+	RingBuffer<Event, 8>                        d_pendingEvents;
+	State                                       d_state      = State::IDLE;
+	uint                                        d_clicks     = 0;
+	absolute_time_t                             d_transition = 0;
 };

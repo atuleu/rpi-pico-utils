@@ -22,11 +22,9 @@ void Scheduler::Work() {
 
 void Scheduler::work() {
 
-	while (true) {
+	while (d_incoming.empty() == false) {
 		TaskData *ptr;
-		if (d_incoming.TryRemove(ptr) == false) {
-			break;
-		}
+		d_incoming.pop(ptr);
 		d_tasks.push(ptr);
 	}
 
@@ -51,10 +49,12 @@ void Scheduler::work() {
 			continue;
 		}
 
-		task->Next = task->Period + task->Next;
-		if (absolute_time_diff_us(now, task->Next) < 0 && task->Period > 0) {
-			debugf("[scheduler/%d] task overflow", d_coreIdx);
-			task->Next = now;
+		task->Next += task->Period;
+		if (task->Period > 0) {
+			while (absolute_time_diff_us(now, task->Next) < 0) {
+				debugf("[scheduler/%d] task overflow", d_coreIdx);
+				task->Next += task->Period;
+			}
 		}
 
 		renewed.push_back(task);
@@ -100,9 +100,10 @@ void Scheduler::after(
 
 void Scheduler::addTask(TaskData *ptr) {
 
-	if (d_incoming.TryAdd(ptr) == false) {
+	if (d_incoming.full() == true) {
 		panic("[scheduler/%d]: incoming task overflow", d_coreIdx);
 	}
+	d_incoming.insert(ptr);
 
 	debugf("[scheduler/%d] scheduled a new task\n", d_coreIdx);
 }
