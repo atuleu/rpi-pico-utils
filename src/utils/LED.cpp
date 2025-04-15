@@ -117,7 +117,7 @@ void LED::work(absolute_time_t now) {
 
 std::optional<int64_t> LED::updateAllTask(absolute_time_t now) {
 	for (ConfigUpdate update; s_updates.TryRemove(update);) {
-		update.Self->d_config = update.Config;
+		update.Self->setConfig(update.Config);
 	}
 
 	for (const auto self : s_leds) {
@@ -125,4 +125,12 @@ std::optional<int64_t> LED::updateAllTask(absolute_time_t now) {
 	}
 
 	return std::nullopt;
+}
+
+void LED::setConfig(const Config &config) {
+	d_config = config;
+
+	if (config.BlinkCount == 0 && config.PulsePeriod_us == 0) {
+		pwm_set_chan_level(d_slice, d_channel, config.Level);
+	}
 }

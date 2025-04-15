@@ -41,6 +41,8 @@ private:
 
 	void work(absolute_time_t now);
 
+	void setConfig(const Config &);
+
 	void performBlink(absolute_time_t now);
 	void performPulse(absolute_time_t now);
 
