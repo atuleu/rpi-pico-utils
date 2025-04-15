@@ -1,16 +1,22 @@
 // SPDX-License-Identifier: LGPL-3.0+
 
 #include "Button.hpp"
-#include "utils/Scheduler.hpp"
-#include <hardware/gpio.h>
+
 #include <optional>
+
+#include <hardware/gpio.h>
 #include <pico/time.h>
 #include <pico/types.h>
+
+#include <utils/Log.hpp>
+#include <utils/Scheduler.hpp>
 
 Button::Button(uint pin)
     : d_pin{pin} {
 
 	gpio_init(d_pin);
+	gpio_set_dir(d_pin, false);
+	gpio_pull_up(d_pin);
 }
 
 std::optional<Button::Event> Button::Pending() {
@@ -20,6 +26,10 @@ std::optional<Button::Event> Button::Pending() {
 	Event e;
 	d_pendingEvents.pop(e);
 	return e;
+}
+
+void Button::pushEvent(Event e) {
+	d_pendingEvents.insert(e);
 }
 
 void Button::Update(absolute_time_t now) {
@@ -41,13 +51,13 @@ void Button::Update(absolute_time_t now) {
 			d_clicks = 0;
 		}
 
-		if (gpio_get(d_pin) == true) {
+		if (gpio_get(d_pin) == false) {
 			d_transition = now;
 			d_state      = State::DEBOUNCE;
 		}
 		break;
 	case State::DEBOUNCE:
-		if (gpio_get(d_pin) == false) {
+		if (gpio_get(d_pin) == true) {
 			d_transition = now;
 			d_state      = State::IDLE;
 			break;
@@ -59,7 +69,7 @@ void Button::Update(absolute_time_t now) {
 		}
 		break;
 	case State::PRESSED:
-		if (gpio_get(d_pin) == false) {
+		if (gpio_get(d_pin) == true) {
 			d_clicks     = std::min(3U, d_clicks + 1);
 			d_transition = now;
 			d_state      = State::IDLE;
@@ -77,7 +87,7 @@ void Button::Update(absolute_time_t now) {
 		}
 		break;
 	case State::LONG_PRESSED:
-		if (gpio_get(d_pin) == false) {
+		if (gpio_get(d_pin) == true) {
 			pushEvent(Event::RELEASE);
 			d_transition = now;
 			d_state      = State::IDLE;
