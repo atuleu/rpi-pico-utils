@@ -18,11 +18,13 @@ set(SRC_FILES
 	Button.cpp
 )
 
-add_library(rp2040-utils INTERFACE)
-target_sources(rp2040-utils INTERFACE ${SRC_FILES})
+add_library(rpi-pico-utils INTERFACE)
+target_sources(rpi-pico-utils INTERFACE ${SRC_FILES})
 
 target_link_libraries(
-	rp2040-utils INTERFACE pico_stdlib pico_multicore hardware_flash
-						   hardware_pwm
+	rpi-pico-utils INTERFACE pico_stdlib pico_multicore hardware_flash
+							 hardware_pwm
 )
-target_include_directories(rp2040-utils INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../)
+target_include_directories(
+	rpi-pico-utils INTERFACE ${CMAKE_CURRENT_LIST_DIR}/../
+)

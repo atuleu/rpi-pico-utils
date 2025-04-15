@@ -8,7 +8,7 @@ foreach(example ${EXAMPLES})
 	set(SRC_FILE ${example}.cpp)
 
 	add_executable(${TARGET_NAME} ${SRC_FILE})
-	target_link_libraries(${TARGET_NAME} rp2040-utils)
+	target_link_libraries(${TARGET_NAME} rpi-pico-utils)
 	pico_add_extra_outputs(${TARGET_NAME})
 	add_openocd_upload_target(TARGET ${TARGET_NAME})
 
