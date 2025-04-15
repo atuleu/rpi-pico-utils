@@ -7,15 +7,10 @@
 #include <pico/time.h>
 #include <pico/types.h>
 
-Button::Button(uint pin, Scheduler &scheduler)
+Button::Button(uint pin)
     : d_pin{pin} {
 
 	gpio_init(d_pin);
-
-	scheduler.Schedule(1000, [this](absolute_time_t now) {
-		work(now);
-		return std::nullopt;
-	});
 }
 
 std::optional<Button::Event> Button::Pending() {
@@ -27,7 +22,7 @@ std::optional<Button::Event> Button::Pending() {
 	return e;
 }
 
-void Button::work(absolute_time_t now) {
+void Button::Update(absolute_time_t now) {
 	static constexpr uint64_t MULTIPLE_CLICK_MAX_PERIOD_us = 300 * 1000;
 	static constexpr uint64_t LONG_PRESS_MIN_TIME_us       = 250 * 1000;
 	static constexpr uint64_t DEBOUNCE_TIME_us             = 20 * 1000;

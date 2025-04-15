@@ -4,6 +4,7 @@
 
 #include "utils/Queue.hpp"
 #include "utils/RingBuffer.hpp"
+#include <deque>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -19,6 +20,7 @@ static constexpr absolute_time_t SCHEDULER_START_NOW = 0xffffffffffffffff;
 struct SchedulerOptions {
 	uint8_t         Priority = SCHEDULER_DEFAULT_PRIORITY;
 	absolute_time_t Start    = SCHEDULER_START_NOW;
+	const char     *Name     = "";
 };
 
 class Scheduler {
@@ -70,11 +72,10 @@ public:
 	}
 
 	static Scheduler &Get();
-	static Scheduler &Core1();
 
 	static void WorkLoop();
 
-	static void InitWorkLoopOnCore1();
+	static void InitWorkLoopOnCore1(std::function<void()> &&core1Init);
 
 private:
 	Scheduler(uint core_idx);
@@ -84,17 +85,27 @@ private:
 		absolute_time_t Next;
 		Scheduler::Task Task;
 		int64_t         Period;
+#ifndef NDEBUG
+		const char *Name = "";
+#endif
 	};
 
 	class TaskQueue {
 	public:
-#ifndef NDEBUG
-		void debugPrintTaskQueue();
-#endif
+		TaskData       *pop();
+		const TaskData *top() const;
+		void            push(TaskData *);
+		size_t          size() const;
 
+#ifndef NDEBUG
+		void debugPrint() const;
+#endif
 	private:
-		std::
-	}
+		std::vector<TaskData *> d_tasks;
+	};
+
+	static bool
+	compareTask(const TaskData *a, const TaskData *b);
 
 	void
 	schedule(int64_t period_us, Task &&task, const SchedulerOptions &options);
@@ -108,8 +119,6 @@ private:
 
 	static Scheduler s_schedulers[2];
 
-	uint                         d_coreIdx;
-	TaskQueue                    d_tasks;
-
-	RingBuffer<TaskData *, 16> d_incoming;
+	uint      d_coreIdx;
+	TaskQueue d_tasks;
 };

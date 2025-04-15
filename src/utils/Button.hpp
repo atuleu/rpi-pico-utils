@@ -17,9 +17,11 @@ public:
 		RELEASE,
 	};
 
-	Button(uint pin, Scheduler &scheduler = Scheduler::Core1());
+	Button(uint pin);
 
 	std::optional<Event> Pending();
+
+	void Update(absolute_time_t now);
 
 private:
 	enum class State {
@@ -28,8 +30,6 @@ private:
 		PRESSED,
 		LONG_PRESSED,
 	};
-
-	void work(absolute_time_t now);
 
 	void pushEvent(Event e);
 

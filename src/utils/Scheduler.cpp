@@ -3,8 +3,7 @@
 #include "Scheduler.hpp"
 #include "utils/Duration.hpp"
 
-#include <hardware/sync/spin_lock.h>
-#include <pico/lock_core.h>
+#include <algorithm>
 #include <pico/multicore.h>
 #include <pico/platform/panic.h>
 #include <pico/time.h>
@@ -22,46 +21,78 @@ void Scheduler::Work() {
 }
 
 #ifndef NDEBUG
-void Scheduler::debugPrintTaskQueue() {
+void Scheduler::TaskQueue::debugPrint() const {
 	printf(
-	    "\n--------------------------------------------------------------------"
-	    "------------\n"
+	    "\n----------------------------------------------------------------\n"
 	);
 	for (const auto &task : d_tasks) {
+		int sec  = task->Next / 1000000;
+		int usec = task->Next % 1000000;
+		int msec = usec / 10000;
+
+		printf(
+		    "{Name: %s, Next: %03d.%02d, Priority:%d}",
+		    task->Name,
+		    sec,
+		    msec,
+		    task->Priority
+		);
 	}
 	printf(
 	    "\n--------------------------------------------------------------------"
 	    "------------\n"
 	);
 }
+
 #endif
 
-void Scheduler::work() {
-
-	while (d_incoming.empty() == false) {
-		TaskData *ptr;
-		d_incoming.pop(ptr);
-		d_tasks.push(ptr);
+bool Scheduler::compareTask(const TaskData *a, const Scheduler::TaskData *b) {
+	if (a->Next == b->Next) {
+		return a->Priority > b->Priority;
 	}
+	return a->Next > b->Next;
+}
+
+void Scheduler::TaskQueue::push(TaskData *ptr) {
+	d_tasks.push_back(ptr);
+	std::push_heap(d_tasks.begin(), d_tasks.end(), Scheduler::compareTask);
+}
+
+size_t Scheduler::TaskQueue::size() const {
+	return d_tasks.size();
+}
+
+Scheduler::TaskData *Scheduler::TaskQueue::pop() {
+	std::pop_heap(d_tasks.begin(), d_tasks.end(), Scheduler::compareTask);
+	auto res = d_tasks.back();
+	d_tasks.pop_back();
+	return res;
+}
+
+const Scheduler::TaskData *Scheduler::TaskQueue::top() const {
+	return d_tasks.front();
+}
+
+void Scheduler::work() {
 
 	std::vector<TaskData *> renewed;
 	renewed.reserve(d_tasks.size());
 
-	while (true) {
+	while (d_tasks.size() > 0) {
 		auto now = get_absolute_time();
 		if (absolute_time_diff_us(now, d_tasks.top()->Next) > 0) {
 			break;
 		}
-		auto task = d_tasks.top();
-		d_tasks.pop();
+		auto task = d_tasks.pop();
 
+		debugf("[scheduler/%d] executing task '%s'\n", d_coreIdx, task->Name);
 		auto newPeriod = task->Task(now);
 		if (newPeriod.has_value()) {
 			task->Period = newPeriod.value();
 		}
 
 		if (task->Period < 0) {
-			debugf("[scheduler/%d] task 0x%x done\n", d_coreIdx, int(task));
+			debugf("[scheduler/%d] task '%s' done\n", d_coreIdx, task->Name);
 			delete task;
 
 			// one shot task, simply do not put it back
@@ -73,9 +104,9 @@ void Scheduler::work() {
 		if (task->Period > 0 && nextIn < 0) {
 			uint nbOverflow = std::abs(nextIn) / task->Period + 1;
 			debugf(
-			    "[scheduler/%d] task %x has overflow %d time(s)\n",
+			    "[scheduler/%d] task '%s' has overflow %d time(s)\n",
 			    d_coreIdx,
-			    int(task),
+			    task->Name,
 			    nbOverflow
 			);
 			task->Next += nbOverflow * task->Period;
@@ -85,22 +116,9 @@ void Scheduler::work() {
 	}
 
 	for (const auto &t : renewed) {
+		debugf("[scheduler/%d] rescheduling task '%s'\n", d_coreIdx, t->Name);
 		d_tasks.push(t);
 	}
-
-#ifndef NDEBUG
-	this->debugPrintTaskQueue();
-#endif
-}
-
-bool Scheduler::TaskComparator::operator()(
-    const TaskData *a, const TaskData *b
-) {
-	if (a->Next == b->Next) {
-		return a->Priority > b->Priority;
-	}
-
-	return a->Next > b->Next;
 }
 
 void Scheduler::schedule(
@@ -112,6 +130,9 @@ void Scheduler::schedule(
 	                                                     : options.Start,
 	    .Task     = std::move(task),
 	    .Period   = period_us,
+#ifndef NDEBUG
+	    .Name = options.Name,
+#endif
 	});
 }
 
@@ -123,25 +144,22 @@ void Scheduler::after(
 	    .Next     = timeout,
 	    .Task     = std::move(task),
 	    .Period   = -1,
+#ifndef NDEBUG
+	    .Name = options.Name,
+#endif
 	});
 }
 
 void Scheduler::addTask(TaskData *ptr) {
+	d_tasks.push(ptr);
 
-	if (d_incoming.full() == true) {
-		panic("[scheduler/%d]: incoming task overflow", d_coreIdx);
-	}
-	d_incoming.insert(ptr);
-
-	debugf("[scheduler/%d] scheduled a new task 0x%x\n", d_coreIdx, int(ptr));
+	debugf("[scheduler/%d] scheduled a new task '%s'\n", d_coreIdx, ptr->Name);
 }
 
 void Scheduler::WorkLoop() {
 	// debugf("[scheduler/%d] scheduler loop init\n", get_core_num());
 
-	if (get_core_num() == 1) {
-		multicore_lockout_victim_init();
-	}
+	multicore_lockout_victim_init();
 	auto &self = Get();
 	debugf("[scheduler/%d] scheduler loop rolling\n", self.d_coreIdx);
 
@@ -150,12 +168,14 @@ void Scheduler::WorkLoop() {
 	}
 }
 
-void Scheduler::InitWorkLoopOnCore1() {
+void Scheduler::InitWorkLoopOnCore1(std::function<void()> &&initFunction) {
 	if (multicore_lockout_victim_is_initialized(1) == true) {
 		// debugf("[scheduler/%d] Other core already started\n",
 		// get_core_num());
 		return;
 	}
+	s_schedulers[1].After(0, std::move(initFunction), {.Name = "core1/init"});
+
 	multicore_launch_core1(Scheduler::WorkLoop);
 	while (multicore_lockout_victim_is_initialized(1) == false) {
 		tight_loop_contents();
@@ -167,11 +187,4 @@ Scheduler Scheduler::s_schedulers[2] = {Scheduler(0), Scheduler(1)};
 
 Scheduler &Scheduler::Get() {
 	return s_schedulers[get_core_num()];
-}
-
-Scheduler &Scheduler::Core1() {
-	// if (get_core_num() == 1) {
-	//	panic("you can only schedule from core 0, or from itself");
-	// }
-	return s_schedulers[1];
 }

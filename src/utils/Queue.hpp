@@ -86,7 +86,7 @@ protected:
 	template <typename U> inline bool add(U &&obj, bool block) {
 		do {
 			auto save = lock();
-			if (this->d_count != N) {
+			if (this->full() == false) {
 				this->insert(std::forward<U>(obj));
 				unlock_notify(save);
 				return true;
@@ -103,7 +103,7 @@ protected:
 	inline bool remove(T &obj, bool block) {
 		do {
 			auto save = lock();
-			if (this->d_count > 0) {
+			if (this->empty() == false) {
 				this->pop(obj);
 				unlock_notify(save);
 				return true;
@@ -121,7 +121,7 @@ protected:
 	inline bool emplace(bool block, Args &&...args) {
 		do {
 			auto save = lock();
-			if (this->d_count != N) {
+			if (this->full() == false) {
 				RingBuffer<T, N>::emplace(std::forward<Args>(args)...);
 				unlock_notify(save);
 				return true;
@@ -133,11 +133,5 @@ protected:
 				return false;
 			}
 		} while (true);
-	}
-
-	inline void increment(uint16_t &value) {
-		if (++value >= N) {
-			value = 0;
-		}
 	}
 };

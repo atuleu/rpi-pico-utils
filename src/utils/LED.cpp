@@ -10,10 +10,9 @@
 #include <utils/Log.hpp>
 #include <utils/Scheduler.hpp>
 
-LED::LED(uint pin, Scheduler &scheduler)
+LED::LED(uint pin)
     : d_slice{pwm_gpio_to_slice_num(pin)}
-    , d_channel{pwm_gpio_to_channel(pin)}
-    , d_scheduler(scheduler) {
+    , d_channel{pwm_gpio_to_channel(pin)} {
 
 	auto config = pwm_get_default_config();
 	pwm_config_set_clkdiv(&config, float(SYS_CLK_HZ) / 255 * 1000.0f);
@@ -27,22 +26,16 @@ LED::LED(uint pin, Scheduler &scheduler)
 #else
 	constexpr static uint64_t PERIOD = 250000;
 #endif
-
-	scheduler.Schedule(PERIOD, [this](absolute_time_t now) {
-		work(now);
-		return std::nullopt;
-	});
 }
 
 void LED::Set(uint8_t level, uint pulsePeriod_us) {
-	d_scheduler.After(0, [this, level, pulsePeriod_us]() {
-		d_level          = level;
-		d_pulsePeriod_us = pulsePeriod_us;
-		d_blinkCount     = 0;
-		if (d_pulsePeriod_us == 0) {
-			pwm_set_chan_level(d_slice, d_channel, level);
-		}
-	});
+
+	d_level          = level;
+	d_pulsePeriod_us = pulsePeriod_us;
+	d_blinkCount     = 0;
+	if (d_pulsePeriod_us == 0) {
+		pwm_set_chan_level(d_slice, d_channel, level);
+	}
 }
 
 void LED::Blink(uint count, uint8_t level) {
@@ -51,11 +44,9 @@ void LED::Blink(uint count, uint8_t level) {
 		return;
 	}
 
-	d_scheduler.After(0, [this, count, level]() {
-		d_blinkCount     = count;
-		d_level          = level;
-		d_pulsePeriod_us = 0;
-	});
+	d_blinkCount     = count;
+	d_level          = level;
+	d_pulsePeriod_us = 0;
 }
 
 void LED::performPulse(absolute_time_t now) {
