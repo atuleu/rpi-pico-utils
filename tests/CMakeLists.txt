@@ -1,7 +1,7 @@
 set(EXAMPLES scheduler storage log led)
 
 add_executable(test_compilation main.cpp)
-target_link_libraries(test_compilation rp2040-utils)
+target_link_libraries(test_compilation rpi-pico-utils)
 
 foreach(example ${EXAMPLES})
 	set(TARGET_NAME test_${example})

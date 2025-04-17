@@ -6,12 +6,17 @@
 
 #include <hardware/gpio.h>
 #include <hardware/pwm.h>
+#include <pico/time.h>
 #include <pico/types.h>
 
 #include <utils/Log.hpp>
 #include <utils/Scheduler.hpp>
 
-std::vector<LED *>                  LED::s_leds;
+std::vector<LED *> &LED::leds() {
+	static std::vector<LED *> s_leds;
+	return s_leds;
+}
+
 BlockingQueue<LED::ConfigUpdate, 8> LED::s_updates;
 
 LED::LED(uint pin)
@@ -25,12 +30,12 @@ LED::LED(uint pin)
 	pwm_set_chan_level(d_slice, d_channel, 0);
 	pwm_init(d_slice, &config, true);
 
-	s_leds.push_back(this);
+	leds().push_back(this);
 }
 
 LED::~LED() {
-	std::remove(s_leds.begin(), s_leds.end(), this);
-	s_leds.pop_back();
+	std::remove(leds().begin(), leds().end(), this);
+	leds().pop_back();
 }
 
 void LED::ScheduleUpdateTask() {
@@ -120,7 +125,7 @@ std::optional<int64_t> LED::updateAllTask(absolute_time_t now) {
 		update.Self->setConfig(update.Config);
 	}
 
-	for (const auto self : s_leds) {
+	for (const auto self : leds()) {
 		self->work(now);
 	}
 

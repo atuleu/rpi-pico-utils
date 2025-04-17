@@ -46,7 +46,7 @@ private:
 	void performBlink(absolute_time_t now);
 	void performPulse(absolute_time_t now);
 
-	static std::vector<LED *>             s_leds;
+	static std::vector<LED *>            &leds();
 	static BlockingQueue<ConfigUpdate, 8> s_updates;
 
 	uint   d_slice, d_channel;
