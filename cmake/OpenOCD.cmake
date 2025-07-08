@@ -7,12 +7,20 @@ function(get_ocd_version)
 		COMMAND ${OPENOCD_EXECUTABLE} --version ERROR_VARIABLE ocd_output
 	)
 	string(REGEX REPLACE "Open On-Chip Debugger ([0-9.]+).*" "\\1"
-						 OPENOCD_VERSION ${ocd_output}
+						 _OPENOCD_VERSION ${ocd_output}
+	)
+	set(OPENOCD_VERSION
+		${_OPENOCD_VERSION}
+		PARENT_SCOPE
 	)
 endfunction(get_ocd_version)
 
 if(OPENOCD_EXECUTABLE)
 	get_ocd_version()
+	message(
+		STATUS
+			"Found openocd (version:${OPENOCD_VERSION}): ${OPENOCD_EXECUTABLE}"
+	)
 endif(OPENOCD_EXECUTABLE)
 
 if(NOT OPENOCD_EXECUTABLE OR OPENOCD_VERSION VERSION_LESS "0.12.0")
